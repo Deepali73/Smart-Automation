@@ -1,19 +1,20 @@
 import smtplib
 
-# creates SMTP session
-s = smtplib.SMTP('smtp.gmail.com', 587)
+def send_email(sender_email: str, receiver_email: str, app_password: str, message: str):
+    try:
+        # create SMTP session
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()  # secure the connection
 
-# start TLS for security
-s.starttls()
+        # login with app password
+        server.login(sender_email, app_password)
 
-# Authentication
-s.login("xyz@gmail.com", "app password")  # Use app password here
+        # send the email
+        server.sendmail(sender_email, receiver_email, message)
+        print("Email sent successfully!")
 
-# message to be sent
-message = "Hey!! It's a trial for sending messages."
+    except Exception as e:
+        print("Error:", e)
 
-# sending the mail
-s.sendmail("xyz@gmail.com", "abc@gmail.com", message)
-
-# terminating the session
-s.quit()
+    finally:
+        server.quit()
