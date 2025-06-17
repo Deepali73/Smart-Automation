@@ -1,3 +1,4 @@
+------------------------#FIRST-APPROACH------------------------
 from twilio.rest import Client
 
 def send_sms_twilio(account_sid: str, auth_token: str, from_number: str, to_number: str, message_body: str):
@@ -15,43 +16,17 @@ def send_sms_twilio(account_sid: str, auth_token: str, from_number: str, to_numb
 
 
 
-from flask import Flask, request
+
+
+
+-------------------------#SECOND-APPROACH-------------------------------
+from flask import Flask, request, jsonify
 from twilio.rest import Client
 
 app = Flask(__name__)
-sms_logs = []  # In-memory log of sent messages
+sms_logs = []  # In-memory list to track sent SMS
 
-# Route to view sent SMS logs
-@app.route("/sms/logs", methods=["GET"])
-def get_sms_logs():
-    return {"sms_sent": sms_logs}
-
-# Route to send an SMS using Twilio
-@app.route("/sms/send", methods=["POST"])
-def send_sms_api():
-    try:
-        # Get form data
-        account_sid = request.form['account_sid']
-        auth_token = request.form['auth_token']
-        from_phone = request.form['from']
-        to_phone = request.form['to']
-        message = request.form['message']
-
-        # Store in logs
-        sms_logs.append({
-            "from": from_phone,
-            "to": to_phone,
-            "message": message
-        })
-
-        # Call SMS function
-        send_sms_twilio(account_sid, auth_token, from_phone, to_phone, message)
-        return f"✅ SMS sent to {to_phone} from {from_phone}"
-
-    except Exception as e:
-        return f"❌ Failed to send SMS: {str(e)}"
-
-# Twilio SMS sending function
+# ========== Twilio SMS Sending Function ==========
 def send_sms_twilio(account_sid: str, auth_token: str, from_number: str, to_number: str, message_body: str):
     client = Client(account_sid, auth_token)
     message = client.messages.create(
@@ -59,8 +34,46 @@ def send_sms_twilio(account_sid: str, auth_token: str, from_number: str, to_numb
         from_=from_number,
         to=to_number
     )
-    print(f"SMS sent! SID: {message.sid}")
+    return message.sid
 
-# Run the Flask app
+# ========== View Sent SMS Logs ==========
+@app.route("/sms/logs", methods=["GET"])
+def get_sms_logs():
+    return jsonify({"sms_sent": sms_logs})
+
+# ========== Send SMS ==========
+@app.route("/sms/send", methods=["POST"])
+def send_sms_api():
+    try:
+        data = request.get_json()
+
+        # Required parameters
+        account_sid = data.get("account_sid")
+        auth_token = data.get("auth_token")
+        from_phone = data.get("from")
+        to_phone = data.get("to")
+        message = data.get("message")
+
+        if not all([account_sid, auth_token, from_phone, to_phone, message]):
+            return jsonify({"error": "Missing one or more required parameters."}), 400
+
+        # Store in log
+        sms_logs.append({
+            "from": from_phone,
+            "to": to_phone,
+            "message": message
+        })
+
+        sid = send_sms_twilio(account_sid, auth_token, from_phone, to_phone, message)
+        return jsonify({
+            "status": "✅ SMS sent successfully.",
+            "sid": sid,
+            "to": to_phone
+        })
+
+    except Exception as e:
+        return jsonify({"error": f"❌ Failed to send SMS: {str(e)}"}), 500
+
+# ========== Run App ==========
 if __name__ == "__main__":
     app.run(debug=True)
