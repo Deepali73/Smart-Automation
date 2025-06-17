@@ -1,3 +1,4 @@
+------------------#FIRST-APPROACH-------------------------------
 from twilio.rest import Client
 
 def send_whatsapp_message(body, to_number, account_sid, auth_token, from_number="whatsapp:+14155238886"):
@@ -32,5 +33,5 @@ if __name__ == "__main__":
     # Replace with real Twilio credentials and verified WhatsApp number
     SID = "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Correct format: starts with AC
     TOKEN = "your_auth_token"
-    TO = "+918233665148"  # Replace with your WhatsApp number
+    TO = "+91xxxxxxxxxx"  # Replace with your WhatsApp number
     send_whatsapp_message("Hello from Python via WhatsApp!", TO, SID, TOKEN)
