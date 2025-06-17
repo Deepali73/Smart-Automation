@@ -1,3 +1,4 @@
+----------------------#FIRST-APPROACH---------------------------
 import messagebird
 
 #create instance of messagebird.Client using API key
@@ -15,46 +16,71 @@ except messagebird.client.ErrorException as e:
 
 
 
-from flask import Flask, request
+
+
+---------------------------#SECOND-APPROACH-----------------------------
+from flask import Flask, request, jsonify
 import messagebird
 
 app = Flask(__name__)
-call_logs = []  # Stores voice call request logs
+call_logs = []  # In-memory list to store call logs
 
-# Route to view voice call logs
+# =====================================
+# GET /calls/logs
+# View all voice call logs
+# =====================================
 @app.route("/calls/logs", methods=["GET"])
 def get_call_logs():
-    return {"voice_calls": call_logs}
+    return jsonify({"voice_calls": call_logs})
 
-# Route to trigger a voice call
+# =====================================
+# POST /calls/make
+# Trigger a voice call via MessageBird
+# =====================================
 @app.route("/calls/make", methods=["POST"])
 def make_voice_call():
     try:
-        # Get request form data
-        api_key = request.form['api_key']
-        recipient = request.form['recipient']
-        voice_message = request.form['message']
-        voice_gender = request.form.get('voice', 'female')  # Default: female
+        api_key = request.form.get('api_key')
+        recipient = request.form.get('recipient')
+        voice_message = request.form.get('message')
+        voice_gender = request.form.get('voice', 'female')  # Default to female
 
-        # Log the request
+        if not all([api_key, recipient, voice_message]):
+            return jsonify({"error": "Missing required parameters."}), 400
+
+        # Create client
+        client = messagebird.Client(api_key)
+
+        # Send voice call
+        msg = client.voice_message_create(
+            recipient,
+            voice_message,
+            {"voice": voice_gender}
+        )
+
+        # Log the call
         call_logs.append({
-            "to": recipient,
+            "recipient": recipient,
             "message": voice_message,
-            "voice": voice_gender
+            "voice": voice_gender,
+            "message_id": msg.id
         })
 
-        # Create voice call
-        client = messagebird.Client(api_key)
-        msg = client.voice_message_create(recipient, voice_message, {'voice': voice_gender})
-
-        return f"✅ Voice call placed to {recipient}. Call ID: {msg.id}"
+        return jsonify({
+            "status": "✅ Voice call placed",
+            "recipient": recipient,
+            "message_id": msg.id
+        })
 
     except messagebird.client.ErrorException as e:
-        errors = "\n".join([f"❌ {err.description}" for err in e.errors])
-        return f"Failed to place voice call:\n{errors}"
-    except Exception as e:
-        return f"Unexpected error: {str(e)}"
+        error_msgs = [err.description for err in e.errors]
+        return jsonify({"status": "❌ Failed", "errors": error_msgs}), 500
 
+    except Exception as e:
+        return jsonify({"status": "❌ Unexpected error", "details": str(e)}), 500
+
+# =====================================
 # Run the Flask app
+# =====================================
 if __name__ == "__main__":
     app.run(debug=True)
